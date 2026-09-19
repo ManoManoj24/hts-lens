@@ -8,7 +8,8 @@
     "start": "next start",
     "ingest": "node scripts/normalize.mjs",
     "benchmark": "node benchmark/run.mjs",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "benchmark:walker": "tsx benchmark/walker.mjs"
   },
   "dependencies": {
     "minisearch": "^7.1.2",
@@ -20,6 +21,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.2"
   }
 }
