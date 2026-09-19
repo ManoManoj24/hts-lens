@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const source = new URL('../data/hts_2026_rev18.csv', import.meta.url);
+const source = new URL('../data/hts_2026_rev19.csv', import.meta.url);
 const output = new URL('../data/hts.normalized.json', import.meta.url);
 const text = fs.readFileSync(source, 'utf8').replace(/^\uFEFF/, '');
 function parseCSV(input) {
@@ -21,4 +21,5 @@ for(const r of rows){
   records.push({h:hts.trim(),i:indent,d:description.trim(),p:hierarchy.slice(0,-1).join(' > '),u:unit?.trim()||'',g:general?.trim()||'',s:special?.trim()||'',c:column2?.trim()||'',a:additional?.trim()||''});
 }
 fs.writeFileSync(output, JSON.stringify(records));
+fs.writeFileSync(new URL('../data/manifest.json', import.meta.url), JSON.stringify({revision:'2026 HTS Revision 19',revisionNumber:19,publishedDate:'September 15, 2026',syncedAt:new Date().toISOString(),sourcePage:'https://www.usitc.gov/2026_hts_revision_19',sourceCsv:'https://www.usitc.gov/sites/default/files/tata/hts/hts_2026_revision_19_csv.csv',changeRecord:'https://www.usitc.gov/2026_hts_revision_19'},null,2));
 console.log(`Wrote ${records.length} lines to ${output.pathname}`);
