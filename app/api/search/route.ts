@@ -1,13 +1,15 @@
 import {NextRequest,NextResponse} from 'next/server';
 import MiniSearch from 'minisearch';
 import records from '../../../data/hts.normalized.json';
+import manifest from '../../../data/manifest.json';
 type Row={h:string;i:number;d:string;p:string;u:string;g:string;s:string;c:string;a:string};
 const rows=records as Row[];
-const search=new MiniSearch<Row>({fields:['d','p','h'],storeFields:['h','i','d','p','u','g','s','c','a'],searchOptions:{boost:{d:3,p:1.2,h:5},prefix:true,fuzzy:0.2,combineWith:'OR'}});
-search.addAll(rows.map((r,id)=>({...r,id})));
-export async function GET(req:NextRequest){
- const q=(req.nextUrl.searchParams.get('q')||'').trim().slice(0,120);
- if(q.length<2)return NextResponse.json({query:q,revision:'2026 HTS Revision 18',results:[]});
- const raw=search.search(q,{prefix:true,fuzzy:q.length>5?0.2:false}); const ranked=raw.sort((a:any,b:any)=>((b.h?.startsWith('99')?-4:0)+b.score)-((a.h?.startsWith('99')?-4:0)+a.score)); const out=ranked.slice(0,12).map((r:any)=>({hts:r.h,description:r.d,hierarchy:r.p,unit:r.u,general:r.g||'Free',special:r.s,column2:r.c,additional:r.a,score:Number(r.score.toFixed(2)),source:`https://hts.usitc.gov/search?query=${encodeURIComponent(r.h)}`}));
- return NextResponse.json({query:q,revision:'2026 HTS Revision 18',retrievedAt:new Date().toISOString(),results:out});
-}
+const aliases:Record<string,string[]>={laptop:['portable automatic data processing machine','notebook computer'],smartphone:['telephone for cellular networks','smart phone'],automobile:['motor car','passenger vehicle'],car:['motor car','passenger vehicle'],mug:['tableware kitchenware ceramic drinking vessel'],"solar panel":['photovoltaic module panel'],"t-shirt":['t-shirts singlets knitted cotton']};
+const idx=new MiniSearch<any>({fields:['d','p','h'],storeFields:['h','i','d','p','u','g','s','c','a'],searchOptions:{boost:{d:5,p:1.1,h:6},prefix:true,fuzzy:.15,combineWith:'OR'}});idx.addAll(rows.map((r,id)=>({...r,id})));
+const pure99=(h:string)=>h.replace(/\./g,'').startsWith('99');const digits=(h:string)=>h.replace(/\D/g,'');
+export async function GET(req:NextRequest){const q=(req.nextUrl.searchParams.get('q')||'').trim().slice(0,120);const commercial=req.nextUrl.searchParams.get('commercial')==='1';const exclude99=req.nextUrl.searchParams.get('exclude99')==='1';const statistical=req.nextUrl.searchParams.get('statistical')==='1';
+ const meta={revision:manifest.revision,revisionNumber:manifest.revisionNumber,publishedDate:manifest.publishedDate,lastSynced:manifest.syncedAt,source:manifest.sourcePage};if(q.length<2)return NextResponse.json({query:q,...meta,results:[]});
+ const lower=q.toLowerCase(),expanded=[q,...Object.entries(aliases).filter(([k])=>lower.includes(k)).flatMap(([,v])=>v)].join(' ');const dutyIntent=/section\s*(301|232)|additional dut|chapter\s*99|china tariff|origin|trade remedy/i.test(q);
+ let raw=idx.search(expanded,{prefix:true,fuzzy:q.length>5?.15:false});raw=raw.filter((r:any)=>(!exclude99&&!commercial||!pure99(r.h))&&(!statistical||digits(r.h).length>=10));
+ raw.sort((a:any,b:any)=>score(b)-score(a));function score(r:any){let s=r.score;const n=digits(r.h).length;if(pure99(r.h)&&!dutyIntent)s-=80;if(!pure99(r.h))s+=18;if(n===4||n===6||n===8)s+=10;if(n===10)s+=4;if(/other/i.test(r.d))s-=3;if(lower.includes('mug')&&/mug|drinking|tableware|kitchenware/i.test(r.d+' '+r.p))s+=55;if(lower.includes('battery')&&/battery/i.test(r.d))s+=15;return s}
+ const out=raw.slice(0,12).map((r:any,i:number)=>({hts:r.h,description:r.d,hierarchy:r.p,hierarchyParts:(r.p?`${r.p} > `:'')+r.d,unit:r.u,general:r.g||'Free',special:r.s,column2:r.c,additional:r.a,statisticalNotes:r.a||'',lineType:pure99(r.h)?'chapter-99':digits(r.h).length>=10?'statistical':'commercial',score:Number(score(r).toFixed(2)),label:i===0?'Top match':'Also consider',source:`https://hts.usitc.gov/search?query=${encodeURIComponent(r.h)}`,cross:`https://rulings.cbp.gov/search?term=${encodeURIComponent(r.h)}`,futureDutyContext:{origin:null,chapter99:[],tradePrograms:[]}}));return NextResponse.json({query:q,filters:{commercial,exclude99,statistical},...meta,retrievedAt:new Date().toISOString(),results:out});}
