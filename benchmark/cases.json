@@ -1,0 +1,7 @@
+[
+ {"id":"cotton-tshirt","category":"textiles","description":"men's knitted cotton t-shirt short sleeves","expected":"6109"},
+ {"id":"ceramic-mug","category":"ceramics","description":"household ceramic drinking mug","expected":"6912"},
+ {"id":"lithium-battery","category":"electrical","description":"rechargeable lithium ion battery","expected":"8507"},
+ {"id":"wooden-chair","category":"furniture","description":"wooden seat chair for household dining","expected":"9401"},
+ {"id":"stainless-spoon","category":"metalware","description":"stainless steel table spoon","expected":"8215"}
+]
