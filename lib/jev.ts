@@ -160,8 +160,8 @@ export async function assistWithJev(product: string, candidates: Candidate[], fe
 }
 
 export function reorderWithAssist<T extends {hts: string; score?: number}>(items: T[], assist: JevAssist): T[] {
-  // Jev fit is the primary rank only after a conclusive response; lexical score breaks ties.
+  // Jev fit is the primary rank whenever scores exist (ok, cached, or inconclusive); lexical score breaks ties.
   // This permutes the retrieved shortlist only — it never inserts a new HTS code.
-  if (!['ok', 'cached'].includes(assist.status) || !assist.fits) return items;
+  if (!assist.fits) return items;
   return [...items].sort((a, b) => (assist.fits?.[b.hts] ?? 0) - (assist.fits?.[a.hts] ?? 0) || (b.score ?? 0) - (a.score ?? 0));
 }

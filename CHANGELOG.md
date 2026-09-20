@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-09-20
+- Reorder the retrieved shortlist by AI fit whenever Jev returns scores, including inconclusive.
 - Show Jev fit scores on retrieved candidates even when AI Assist is inconclusive.
 - Place Search HTS below AI Assist and product facts so ranking options come before submit.
 - Stop publishing blank official duty cells as Free.

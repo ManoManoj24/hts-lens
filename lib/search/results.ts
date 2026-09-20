@@ -26,10 +26,6 @@ export function toSearchResult(hit: SearchHit, index: number, query: SearchQuery
   };
 }
 
-function conclusiveAssist(assist: JevAssist): boolean {
-  return assist.status === 'ok' || assist.status === 'cached';
-}
-
 /** Attach Jev fit only for retrieved candidates. Extra keys in `assist.fits` never create new HTS rows. */
 function withRetrievedFit(result: SearchResult, fits: Record<string, number> | undefined): Pick<SearchResult, 'aiFit'> | Record<string, never> {
   if (!fits) return {};
@@ -39,10 +35,10 @@ function withRetrievedFit(result: SearchResult, fits: Record<string, number> | u
 /** AI Assist may reorder this list and attach fit scores. It never adds or invents HTS codes. */
 export function applyAssistRanking(results: SearchResult[], assist: JevAssist): SearchResult[] {
   const ranked = reorderWithAssist(results, assist);
-  const reordered = conclusiveAssist(assist);
+  const usedFitOrder = Boolean(assist.fits);
   return ranked.map((result, index) => ({
     ...result,
     ...withRetrievedFit(result, assist.fits),
-    label: index === 0 ? (reordered ? 'AI-assisted ranking' : 'Top match') : 'Also consider',
+    label: index === 0 ? (usedFitOrder ? 'AI-assisted ranking' : 'Top match') : 'Also consider',
   }));
 }
