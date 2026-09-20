@@ -67,20 +67,42 @@ test('AI assist ranking permutes retrieved codes and never inserts a new HTS num
     toSearchResult(hit({h: '6912.00', d: 'Ceramic tableware', score: 30}), 0, baseQuery),
     toSearchResult(hit({h: '3924.10', d: 'Plastic tableware', score: 20}), 1, baseQuery),
   ];
-  const ranked = applyAssistRanking(retrieved, {status: 'ok', fits: {'6912.00': 0.2, '3924.10': 0.9}});
+  const ranked = applyAssistRanking(retrieved, {status: 'ok', fits: {'6912.00': 0.2, '3924.10': 0.9, '9999.99': 0.99}});
   assert.deepEqual(ranked.map(item => item.hts).sort(), ['3924.10', '6912.00']);
   assert.equal(ranked[0].hts, '3924.10');
   assert.equal(ranked[0].label, 'AI-assisted ranking');
+  assert.equal(ranked[0].aiFit, 0.9);
+  assert.equal(ranked[1].aiFit, 0.2);
   const leaked = ranked.some(item => !retrieved.some(original => original.hts === item.hts));
   assert.equal(leaked, false);
 });
 
-test('inconclusive assist keeps lexical order', () => {
+test('inconclusive assist keeps lexical order but still attaches fit scores', () => {
   const retrieved: SearchResult[] = [
     toSearchResult(hit({h: 'a', d: 'A', score: 30}), 0, baseQuery),
     toSearchResult(hit({h: 'b', d: 'B', score: 10}), 1, baseQuery),
   ];
-  const ranked = applyAssistRanking(retrieved, {status: 'inconclusive', fits: {a: 0.1, b: 0.9}});
-  assert.equal(ranked[0].hts, 'a');
-  assert.equal(ranked[0].label, 'Top match');
+  const fits = {a: 0.1, b: 0.9, leaked: 0.99};
+  const inconclusive = applyAssistRanking(retrieved, {status: 'inconclusive', fits});
+  const ok = applyAssistRanking(retrieved, {status: 'ok', fits});
+  const cached = applyAssistRanking(retrieved, {status: 'cached', fits});
+
+  assert.deepEqual(inconclusive.map(item => item.hts), ['a', 'b']);
+  assert.equal(inconclusive[0].label, 'Top match');
+  assert.equal(inconclusive[0].aiFit, 0.1);
+  assert.equal(inconclusive[1].aiFit, 0.9);
+  assert.equal(inconclusive.some(item => item.hts === 'leaked'), false);
+
+  assert.deepEqual(ok.map(item => item.hts), ['b', 'a']);
+  assert.deepEqual(cached.map(item => item.hts), ['b', 'a']);
+  assert.equal(ok[0].label, 'AI-assisted ranking');
+  assert.equal(cached[0].label, 'AI-assisted ranking');
+  assert.equal(ok[0].aiFit, 0.9);
+  assert.equal(cached[0].aiFit, 0.9);
+});
+
+test('inconclusive assist without fits does not attach aiFit', () => {
+  const retrieved = [toSearchResult(hit({h: 'a', d: 'A', score: 30}), 0, baseQuery)];
+  const ranked = applyAssistRanking(retrieved, {status: 'inconclusive'});
+  assert.equal(ranked[0].aiFit, undefined);
 });

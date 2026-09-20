@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-09-20
+- Show Jev fit scores on retrieved candidates even when AI Assist is inconclusive.
 - Stop publishing blank official duty cells as Free.
 - Stop injecting ornamental/sanitary ceramic codes into floor-tile shortlists.
 - Label additional duties correctly instead of "statistical notes".
