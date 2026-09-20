@@ -38,17 +38,17 @@ function toHit(row: HtsRow, score = 0): SearchHit {
   return {...row, score};
 }
 
-function asSearchHit(value: HtsRow & {score?: number}): SearchHit {
+function asSearchHit(value: Partial<HtsRow> & {score?: number}): SearchHit {
   return {
-    h: value.h,
-    i: value.i,
-    d: value.d,
-    p: value.p,
-    u: value.u,
-    g: value.g,
-    s: value.s,
-    c: value.c,
-    a: value.a,
+    h: value.h ?? '',
+    i: Number(value.i || 0),
+    d: value.d ?? '',
+    p: value.p ?? '',
+    u: value.u ?? '',
+    g: value.g ?? '',
+    s: value.s ?? '',
+    c: value.c ?? '',
+    a: value.a ?? '',
     score: Number(value.score || 0),
   };
 }
