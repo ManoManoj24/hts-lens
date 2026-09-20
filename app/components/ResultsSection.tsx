@@ -1,7 +1,7 @@
 import type {JevAssist} from '../../lib/jev';
 import type {SearchResult} from '../../lib/types';
 
-export function assistMessage(assist: JevAssist, loading: boolean): string {
+function assistMessage(assist: JevAssist, loading: boolean): string {
   if (loading) return 'Comparing the retrieved HTS candidates...';
   if (assist.status === 'ok') return 'AI Assist reordered these source-backed candidates.';
   if (assist.status === 'inconclusive') {
