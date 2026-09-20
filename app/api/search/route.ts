@@ -1,18 +1,34 @@
-import {NextRequest,NextResponse} from 'next/server';
-import MiniSearch from 'minisearch';
-import records from '../../../data/hts.normalized.json';
-import {assistWithJev,reorderWithAssist} from '../../../lib/jev';
-import {publishedDuty} from '../../../lib/duty';
-import manifest from '../../../data/manifest.json';
-type Row={h:string;i:number;d:string;p:string;u:string;g:string;s:string;c:string;a:string};
-const rows=records as Row[];
-const aliases:Record<string,string[]>={laptop:['portable automatic data processing machine','notebook computer'],smartphone:['telephone for cellular networks','smart phone'],automobile:['motor car','passenger vehicle'],car:['motor car','passenger vehicle'],mug:['tableware kitchenware ceramic drinking vessel'],"solar panel":['photovoltaic module panel'],"t-shirt":['t-shirts singlets knitted cotton']};
-const idx=new MiniSearch<any>({fields:['d','p','h'],storeFields:['h','i','d','p','u','g','s','c','a'],searchOptions:{boost:{d:5,p:1.1,h:6},prefix:true,fuzzy:.15,combineWith:'OR'}});idx.addAll(rows.map((r,id)=>({...r,id})));
-const families:Record<string,string[]>={food:['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24'],textiles:['50','51','52','53','54','55','56','57','58','59','60','61','62','63'],bags:['41','42','43','64'],ceramics:['68','69','70'],machinery:['84','85','90','91'],transport:['86','87','88','89'],furniture:['94','95','96']};
-const pure99=(h:string)=>h.replace(/\./g,'').startsWith('99');const digits=(h:string)=>h.replace(/\D/g,'');
-export async function GET(req:NextRequest){const q=(req.nextUrl.searchParams.get('q')||'').trim().slice(0,120);const commercial=req.nextUrl.searchParams.get('commercial')==='1';const exclude99=req.nextUrl.searchParams.get('exclude99')==='1';const statistical=req.nextUrl.searchParams.get('statistical')==='1';const family=req.nextUrl.searchParams.get('family')||'all';const familyChapters=families[family]||[];const strictFamily=req.nextUrl.searchParams.get('strictFamily')==='1'&&familyChapters.length>0;
- const meta={revision:manifest.revision,revisionNumber:manifest.revisionNumber,publishedDate:manifest.publishedDate,lastSynced:manifest.syncedAt,source:manifest.sourcePage};if(q.length<2)return NextResponse.json({query:q,...meta,results:[]});
- const lower=q.toLowerCase(),expanded=[q,...Object.entries(aliases).filter(([k])=>lower.includes(k)).flatMap(([,v])=>v)].join(' ');const dutyIntent=/section\s*(301|232)|additional dut|chapter\s*99|china tariff|origin|trade remedy/i.test(q);
- let raw=idx.search(expanded,{prefix:true,fuzzy:q.length>5?.15:false});raw=raw.filter((r:any)=>(!exclude99&&!commercial||!pure99(r.h))&&(!statistical||digits(r.h).length>=10)&&(!strictFamily||familyChapters.includes(digits(r.h).slice(0,2))));
- raw.sort((a:any,b:any)=>score(b)-score(a));if(/(?:porcelain|ceramic).*tile|tile.*(?:porcelain|ceramic)/i.test(q)){const ceramic=rows.filter(r=>r.h==='6907').map(r=>({...r,score:0}));raw=[...raw.filter((r:any)=>!ceramic.some(c=>c.h===r.h)).slice(0,9),...ceramic] as any}function score(r:any){let s=r.score;if(familyChapters.includes(digits(r.h).slice(0,2)))s+=35;const n=digits(r.h).length;if(pure99(r.h)&&!dutyIntent)s-=80;if(!pure99(r.h))s+=18;if(n===4||n===6||n===8)s+=10;if(n===10)s+=4;if(/other/i.test(r.d))s-=3;if(lower.includes('mug')&&/mug|drinking|tableware|kitchenware/i.test(r.d+' '+r.p))s+=55;if(lower.includes('battery')&&/battery/i.test(r.d))s+=15;return s}
- let out=raw.slice(0,12).map((r:any,i:number)=>({hts:r.h,description:r.d,hierarchy:r.p,hierarchyParts:(r.p?`${r.p} > `:'')+r.d,unit:r.u,general:publishedDuty(r.g),special:r.s,column2:r.c,additional:r.a,lineType:pure99(r.h)?'chapter-99':digits(r.h).length>=10?'statistical':'commercial',score:Number(score(r).toFixed(2)),label:i===0?'Top match':'Also consider',source:`https://hts.usitc.gov/search?query=${encodeURIComponent(r.h)}`,cross:`https://rulings.cbp.gov/search?term=${encodeURIComponent(r.h)}`,futureDutyContext:{origin:null,chapter99:[],tradePrograms:[]}}));const factKeys=['material','use','construction','form','dimensions','power'] as const;const facts=Object.fromEntries(factKeys.map(k=>[k,(req.nextUrl.searchParams.get(k)||'').trim().slice(0,160)]).filter(([,v])=>v));const productState=Object.keys(facts).length?JSON.stringify({description:q,...facts}):q;const aiAssist=req.nextUrl.searchParams.get('ai')==='1'?await assistWithJev(productState,out):{status:'off' as const};out=reorderWithAssist(out,aiAssist).map((r:any,i:number)=>({...r,...(['ok','cached'].includes(aiAssist.status)&&aiAssist.fits?{aiFit:Number(aiAssist.fits[r.hts]??0)}:{}),label:i===0?(['ok','cached'].includes(aiAssist.status)?'AI-assisted ranking':'Top match'):'Also consider'}));return NextResponse.json({query:q,filters:{commercial,exclude99,statistical,family,strictFamily},...meta,retrievedAt:new Date().toISOString(),results:out,aiAssist});}
+import {NextRequest, NextResponse} from 'next/server';
+import {getProvenance} from '../../../lib/provenance';
+import {parseSearchParams} from '../../../lib/search/params';
+import {searchWithOptionalAssist} from '../../../lib/search';
+
+export async function GET(req: NextRequest) {
+  const query = parseSearchParams(req.nextUrl.searchParams);
+  const provenance = getProvenance();
+  const meta = {
+    revision: provenance.revision,
+    revisionNumber: provenance.revisionNumber,
+    publishedDate: provenance.publishedDate,
+    lastSynced: provenance.lastSynced,
+    source: provenance.source,
+  };
+  if (query.q.length < 2) {
+    return NextResponse.json({query: query.q, ...meta, results: []});
+  }
+  const {results, aiAssist} = await searchWithOptionalAssist(query);
+  return NextResponse.json({
+    query: query.q,
+    filters: {
+      commercial: query.commercial,
+      exclude99: query.exclude99,
+      statistical: query.statistical,
+      family: query.family,
+      strictFamily: query.strictFamily,
+    },
+    ...meta,
+    retrievedAt: new Date().toISOString(),
+    results,
+    aiAssist,
+  });
+}
