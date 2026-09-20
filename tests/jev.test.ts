@@ -43,10 +43,17 @@ test('sorts all successful fits with lexical score as the tie-breaker', () => {
   assert.deepEqual(reorderWithAssist(items, assist).map(item => item.hts), ['b', 'c', 'a', 'd']);
 });
 
-test('cached success reranks while inconclusive remains lexical', () => {
+test('ok, cached, and inconclusive fits all rerank by AI fit', () => {
   const items = [{hts: 'a', score: 30}, {hts: 'b', score: 20}];
+  assert.equal(reorderWithAssist(items, {status: 'ok', fits: {a: 0.1, b: 0.8}})[0].hts, 'b');
   assert.equal(reorderWithAssist(items, {status: 'cached', fits: {a: 0.1, b: 0.8}})[0].hts, 'b');
-  assert.equal(reorderWithAssist(items, {status: 'inconclusive', fits: {a: 0.1, b: 0.8}})[0].hts, 'a');
+  assert.equal(reorderWithAssist(items, {status: 'inconclusive', fits: {a: 0.1, b: 0.8}})[0].hts, 'b');
+});
+
+test('assist without fits keeps original order', () => {
+  const items = [{hts: 'a', score: 30}, {hts: 'b', score: 20}];
+  assert.deepEqual(reorderWithAssist(items, {status: 'ok'}).map(item => item.hts), ['a', 'b']);
+  assert.deepEqual(reorderWithAssist(items, {status: 'inconclusive'}).map(item => item.hts), ['a', 'b']);
 });
 
 test('low sufficiency abstains', async () => {
@@ -90,7 +97,8 @@ test('identical request is cached', async () => {
 
 test('reorder never inserts an HTS code that was not retrieved', () => {
   const items = [{hts: '6912.00', score: 10}];
-  const assist: JevAssist = {status: 'ok', fits: {'6912.00': 0.2, '9999.99.99': 0.99}};
-  const ranked = reorderWithAssist(items, assist);
-  assert.deepEqual(ranked.map(item => item.hts), ['6912.00']);
+  for (const status of ['ok', 'inconclusive'] as const) {
+    const assist: JevAssist = {status, fits: {'6912.00': 0.2, '9999.99.99': 0.99}};
+    assert.deepEqual(reorderWithAssist(items, assist).map(item => item.hts), ['6912.00']);
+  }
 });

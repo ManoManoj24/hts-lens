@@ -6,7 +6,7 @@ function assistMessage(assist: JevAssist, loading: boolean): string {
   if (assist.status === 'ok') return 'AI Assist reordered these source-backed candidates.';
   if (assist.status === 'inconclusive') {
     return assist.fits
-      ? 'No clear winner was picked. Fit scores are listed on each candidate — add product details to rank more confidently.'
+      ? 'No clear winner was picked. Candidates are ordered by AI fit — add product details to rank more confidently.'
       : 'No clear fit - add product details.';
   }
   if (assist.status === 'cached') return 'AI-assisted ranking from cache.';
