@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "ingest": "node scripts/normalize.mjs",
-    "benchmark": "node benchmark/run.mjs",
+    "benchmark": "node --experimental-strip-types benchmark/run.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
