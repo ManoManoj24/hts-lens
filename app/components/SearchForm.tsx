@@ -36,16 +36,14 @@ type SearchFormProps = {
 export function SearchForm(props: SearchFormProps) {
   const {q, loading, ai, family, strictFamily, facts, filters} = props;
   return (
-    <>
-      <form onSubmit={props.onSubmit}>
-        <input
-          aria-label="Product description"
-          value={q}
-          onChange={event => props.onQueryChange(event.target.value)}
-          placeholder="Describe a product or paste an HTS number"
-        />
-        <button>{loading ? 'Searching…' : 'Search HTS'}</button>
-      </form>
+    <form className="search-form" onSubmit={props.onSubmit}>
+      <input
+        name="q"
+        aria-label="Product description"
+        value={q}
+        onChange={event => props.onQueryChange(event.target.value)}
+        placeholder="Describe a product or paste an HTS number"
+      />
       <div className="examples">
         Try {EXAMPLES.map(example => (
           <button key={example} type="button" onClick={() => props.onExample(example)}>{example}</button>
@@ -102,6 +100,7 @@ export function SearchForm(props: SearchFormProps) {
               <label key={field.key}>
                 <span>{field.label}</span>
                 <input
+                  name={field.key}
                   value={facts[field.key]}
                   onChange={event => props.onFactChange(field.key, event.target.value)}
                   placeholder={field.placeholder}
@@ -112,7 +111,8 @@ export function SearchForm(props: SearchFormProps) {
           <p>Only filled facts are sent. Leave anything unknown blank.</p>
         </fieldset>
       )}
+      <button type="submit" className="search-submit">{loading ? 'Searching…' : 'Search HTS'}</button>
       <p className="code-hint">Already have a code? Paste it above to open the matching schedule lines.</p>
-    </>
+    </form>
   );
 }
