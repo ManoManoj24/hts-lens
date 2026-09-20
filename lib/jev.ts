@@ -16,7 +16,7 @@ export async function assistWithJev(product:string,candidates:Candidate[],fetche
  const key=process.env.JEV_API_KEY;if(!key)return{status:'temporarily_unavailable',reason:'missing_key'};
  const shortlist=candidates.slice(0,12);if(!shortlist.length)return{status:'inconclusive',reason:'no_candidates'};
  const promptVersion='hts-v1';const cacheKey=await hash(JSON.stringify({promptVersion,product:product.trim().toLowerCase(),shortlist,model:JEV_MODEL}));
- const prior=cache.get(cacheKey);if(prior&&prior.expires>Date.now())return{...prior.value,status:'cached'};
+ const prior=cache.get(cacheKey);if(prior&&prior.expires>Date.now())return prior.value.status==='ok'?{...prior.value,status:'cached'}:prior.value;
  if(spentTokens*PRICE_PER_TOKEN>=BUDGET_USD)return{status:'budget_exhausted'};
  const state={product:product.slice(0,500),candidates:shortlist.map((c,i)=>({id:safeId(i),official_description:c.description,hierarchy:c.hierarchyParts}))};
  const criteria=Object.fromEntries(shortlist.map((c,i)=>[safeId(i),`${c.description}. Hierarchy: ${c.hierarchyParts}`]));criteria.none_of_these='The supplied product facts do not support any candidate.';
@@ -36,4 +36,8 @@ export async function assistWithJev(product:string,candidates:Candidate[],fetche
   cache.set(cacheKey,{expires:Date.now()+30*86400_000,value});return value;
  }catch(e){return{status:'temporarily_unavailable',reason:e instanceof Error&&e.name==='AbortError'?'timeout':'network_error'}}
 }
-export function reorderWithAssist<T extends {hts:string}>(items:T[],assist:JevAssist){if(assist.status!=='ok'||!assist.selectedHts)return items;return [...items].sort((a,b)=>a.hts===assist.selectedHts?-1:b.hts===assist.selectedHts?1:0)}
+export function reorderWithAssist<T extends {hts:string;score?:number}>(items:T[],assist:JevAssist){
+ // Jev fit is the primary rank only after a conclusive response; lexical score breaks ties and remains available.
+ if(!['ok','cached'].includes(assist.status)||!assist.fits)return items;
+ return [...items].sort((a,b)=>(assist.fits?.[b.hts]??0)-(assist.fits?.[a.hts]??0)||(b.score??0)-(a.score??0));
+}
