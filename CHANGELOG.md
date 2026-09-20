@@ -1,6 +1,8 @@
 # Changelog
 
 ## 2026-09-20
+- Show Jev fit scores on retrieved candidates even when AI Assist is inconclusive.
+- Place Search HTS below AI Assist and product facts so ranking options come before submit.
 - Stop publishing blank official duty cells as Free.
 - Stop injecting ornamental/sanitary ceramic codes into floor-tile shortlists.
 - Label additional duties correctly instead of "statistical notes".
