@@ -38,3 +38,8 @@ The previous Revision 18 extract is archived at `data/archive/hts_2026_rev18.csv
 ## Boundary
 
 Research estimate only. This is not legal advice or a binding CBP ruling. Classification depends on complete product facts. Chapter 99, trade remedies, and AD/CVD require separate review. AI Assist never creates an HTS code.
+
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). Copyright 2026 Manoj Kumar Periyasamy.
